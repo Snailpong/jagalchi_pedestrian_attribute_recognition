@@ -66,30 +66,44 @@ def preprocess_annot(list_images, json_data, file_name, dataset_type, lines_hot)
     for ann in annots2:
         if not "person" in ann["id"]:
             continue
-        
-        frame = ann["frame"]
-        bbox = ann["bbox"]
-        # print(ann["accessories"], ann["top_color"], ann["bottom_color"])
-        image_crop = list_images[frame][int(bbox[1]):int(bbox[3]+1), int(bbox[0]):int(bbox[2]+1)]
-        
-        image_name_ext = f"{file_name}_{ann['id']}_{ann['frame']}.jpg"
-        im = Image.fromarray(image_crop)
-        im.save(f"./data/{dataset_type}/{image_name_ext}.jpg")
 
-        hot_code = np.zeros(45, dtype=np.uint8)
-        hot_code[dict_label[dict_person[ann["id"]]["gender"]]] = 1
-        hot_code[dict_label[dict_person[ann["id"]]["age"]]] = 1
-        hot_code[dict_label[ann["top_type"]]] = 1
-        hot_code[dict_label["top_" + ann["top_color"]]] = 1
-        hot_code[dict_label[ann["bottom_type"]]] = 1
-        if ann["bottom_type"] != "none":
-            hot_code[dict_label["bottom_" + ann["bottom_color"]]] = 1
-        hot_code[dict_label["acc_" + ann["accessories"]]] = 1
-        hot_code[dict_label["pet"]] = ann["pet"]
-        hot_code = hot_code[2:]
-        hot_line = " ".join(map(str, list(hot_code)))
+        try:
+            frame = ann["frame"]
+            bbox = ann["bbox"]
+            # print(ann["accessories"], ann["top_color"], ann["bottom_color"])
 
-        lines_hot.append(f"{image_name_ext} {hot_line}\n")
+            hot_code = np.zeros(45, dtype=np.uint8)
+            hot_code[dict_label[dict_person[ann["id"]]["gender"]]] = 1
+            hot_code[dict_label[dict_person[ann["id"]]["age"]]] = 1
+            hot_code[dict_label[ann["top_type"]]] = 1
+            hot_code[dict_label["top_" + ann["top_color"]]] = 1
+            
+            if ann["bottom_type"] == "none":
+                hot_code[dict_label["bottom_none"]] = 1
+            else:
+                hot_code[dict_label[ann["bottom_type"]]] = 1
+                hot_code[dict_label["bottom_" + ann["bottom_color"]]] = 1
+
+            hot_code[dict_label["acc_" + ann["accessories"]]] = 1
+            hot_code[dict_label["pet"]] = ann["pet"]
+            hot_code = hot_code[2:]
+            hot_line = " ".join(map(str, list(hot_code)))
+
+            image_name_ext = f"{file_name}_{ann['id']}_{ann['frame']}.jpg"
+
+            # if not os.path.isfile(f"./data/{dataset_type}/{image_name_ext}.jpg"):
+            image_crop = list_images[frame][int(bbox[1]):int(bbox[3]+1), int(bbox[0]):int(bbox[2]+1)]
+            im = Image.fromarray(image_crop)
+            im.save(f"./data/{dataset_type}/{image_name_ext}")
+
+            lines_hot.append(f"{image_name_ext} {hot_line}\n")
+
+        except:
+            continue
+
+        cnt += 1
+        if cnt == 100:
+            break
         # print(hot_code, np.sum(hot_code))
 
         # plt.imshow(image_crop)
@@ -115,7 +129,9 @@ def preprocess_annot(list_images, json_data, file_name, dataset_type, lines_hot)
 
 def make_dataset(list_type, dataset_type):
     lines_hot = []
-    for idx, folder_name, file_name in enumerate(list_type):
+    for idx, (folder_name, file_name) in enumerate(list_type):
+        # if dataset_type == "train" and idx < 385:
+        #     continue
         print(f"{idx}/{len(list_type)} {file_name}")
         list_images = video2frame(f"{DATA_DIR}/{folder_name}/{file_name}.mp4")
         json_data = json2data(f"{DATA_DIR}/{folder_name}/{file_name}.json")

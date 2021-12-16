@@ -5,6 +5,7 @@ model
 release_data
 utils
 *.zip
-main.py
 README.md
 data
+rename.py
+comparison_plot.py
